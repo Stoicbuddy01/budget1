@@ -49,10 +49,10 @@ const HeroSection = () => {
             <div className='hero-image-wrapper'>
                 <div ref={imageRef} className='hero-image custom-image-wrapper'>
                 <Image 
-                src='/banner.jpeg'
+                src='/banner.jpg'
                 layout='intrinsic' 
                 width={1280} 
-                height={0}  
+                height={500}  
                 alt='Dashboard Preview'
                 className='rounded-2xl shadow-2xl border mx-auto'
                 priority
