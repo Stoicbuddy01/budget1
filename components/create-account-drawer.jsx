@@ -1,5 +1,7 @@
 "use client";
 import React, { useState } from 'react';
+import { toast } from "sonner";
+import { useEffect } from 'react';
 import {
     Drawer,
     DrawerClose,
@@ -15,7 +17,9 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Button } from './ui/button';
 import { Switch } from '@radix-ui/react-switch';
-
+import useFetch from "@/hooks/use-fetch";
+import { createAccount } from '@/actions/dashboard';
+import { Loader2 } from 'lucide-react';
 const CreateAccountDrawer = ({ children }) => {
     const [open, setOpen] = useState(false);
 
@@ -36,8 +40,27 @@ const CreateAccountDrawer = ({ children }) => {
         },
     });
 
+    const {data:newAccount ,error,loading:createAccountLoading,fn:createAccountFn} = useFetch(createAccount);
+
+    useEffect(() => {
+        if(newAccount && !createAccountLoading){
+            toast.success("Account creayed successfully");
+            reset();
+            setOpen(false);
+        }
+    }, [createAccountLoading,newAccount])
+
+    useEffect(() => {
+        if(error){
+            toast.error(error.message||"Failed to create account");
+        }
+    }, [error])
+
+    
+
     const onSubmit = async(data) => {
-        console.log( data);
+        // console.log( data);
+        await createAccountFn(data);
     };
 
     return (
@@ -114,8 +137,10 @@ const CreateAccountDrawer = ({ children }) => {
                                 <DrawerClose asChild>
                                     <Button type='button' variant="outline" className='flex-1 '>Cancel</Button>
                                 </DrawerClose>
-                                <Button type="submit" className='flex-1'>
-                                    Create Account
+                                <Button type="submit" className='flex-1' disabled={createAccountLoading}>
+                                    {createAccountLoading? ( <><Loader2 className='mr-2 h-4 w-4 animate-spin'/>Creating...</> ) 
+                                    : (
+                                    "Create Account")}
                                 </Button>
                             </div>
                     </form>
