@@ -2,59 +2,60 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { revalidatePath } from "next/cache";
 
-const serializeTransactions = (obj)=>{
-  const serialized ={...obj};
-
-
+const serializeTransactions = (obj) => {
+  const serialized = { ...obj };
   if (obj.balance) {
     serialized.balance = obj.balance.toNumber();
   }
-}
+  return serialized;
+};
+
 export async function createAccount(data) {
   try {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
     const user = await db.user.findUnique({
-      where:{clerkUserId:userId},
+      where: { clerkUserId: userId },
     });
-    if (user) {
-      throw new Error("user not found");
+    if (!user) {
+      throw new Error("User not found");
     }
 
-    const balanceFloat = parseFloat(data.balance)
-    if(isNan(balanceFloat)){
+    const balanceFloat = parseFloat(data.balance);
+    if (isNaN(balanceFloat)) {
       throw new Error("Invalid Balance Amount");
     }
 
     const existingAccounts = await db.account.findMany({
-      where:{ userId:user.id},
+      where: { userId: user.id },
     });
-    const shouldBeDefault = 
-      existingAccounts.length === 0 ? true : data.isDefault;
+    const shouldBeDefault = existingAccounts.length === 0 ? true : data.isDefault;
 
-      if(shouldBeDefault){
-        await db.account.updateMany({
-          where:{userId: user.id, isDefault:true},
-          data:{isDefault:false},
-        })
-      }
-
-      const account = await db.account.create({
-        data:{
-          ...data,
-          balance:balanceFloat,
-          userId: user.id,
-          isDefault: shouldBeDefault,
-        },
+    if (shouldBeDefault) {
+      await db.account.updateMany({
+        where: { userId: user.id, isDefault: true },
+        data: { isDefault: false },
       });
+    }
 
-      const serializedAccount = serializeTransactions(account);
+    const account = await db.account.create({
+      data: {
+        ...data,
+        balance: balanceFloat,
+        userId: user.id,
+        isDefault: shouldBeDefault,
+      },
+    });
 
-      revalidatePath("/dashboard");
-      return {success:true,data:serializedAccount}
+    const serializedAccount = serializeTransactions(account);
+
+    revalidatePath("/dashboard");
+    return { success: true, data: serializedAccount };
   } catch (error) {
+    console.error("Error creating account:", error);
     throw new Error(error.message);
-   }
+  }
 }

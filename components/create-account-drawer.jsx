@@ -16,7 +16,7 @@ import { accountSchema } from '@/app/lib/schema';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Button } from './ui/button';
-import { Switch } from '@radix-ui/react-switch';
+import { Switch } from "@/components/ui/switch";
 import useFetch from "@/hooks/use-fetch";
 import { createAccount } from '@/actions/dashboard';
 import { Loader2 } from 'lucide-react';
@@ -40,15 +40,20 @@ const CreateAccountDrawer = ({ children }) => {
         },
     });
 
-    const {data:newAccount ,error,loading:createAccountLoading,fn:createAccountFn} = useFetch(createAccount);
+    const {
+        data:newAccount ,
+        error,
+        loading:createAccountLoading,
+        fn:createAccountFn,
+    } = useFetch(createAccount);
 
     useEffect(() => {
         if(newAccount && !createAccountLoading){
-            toast.success("Account creayed successfully");
+            toast.success("Account created successfully");
             reset();
             setOpen(false);
         }
-    }, [createAccountLoading,newAccount])
+    }, [createAccountLoading,newAccount]);
 
     useEffect(() => {
         if(error){
@@ -59,7 +64,6 @@ const CreateAccountDrawer = ({ children }) => {
     
 
     const onSubmit = async(data) => {
-        // console.log( data);
         await createAccountFn(data);
     };
 
@@ -129,7 +133,7 @@ const CreateAccountDrawer = ({ children }) => {
                             </div>
                                 <Switch 
                                 id=" isDefault"
-                                onCheckedChange={(checked) => setValue("isDefault", value)}
+                                onCheckedChange={(checked) => setValue("isDefault", checked)}
                                 checked={watch("isDefault")}
                                 />
                             </div>
