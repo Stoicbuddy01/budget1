@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { ReceiptScanner } from "./recipt-scanner";
 
 const AddTransactionForm = ({ accounts, categories }) => {
   const router = useRouter();
@@ -62,6 +63,20 @@ const AddTransactionForm = ({ accounts, categories }) => {
     transactionFn(formData);
   };
 
+  const handleScanComplete = (scannedData) => {
+    if (scannedData) {
+      setValue("amount", scannedData.amount.toString());
+      setValue("date", new Date(scannedData.date));
+      if (scannedData.description) {
+        setValue("description", scannedData.description);
+      }
+      if (scannedData.category) {
+        setValue("category", scannedData.category);
+      }
+      toast.success("Receipt scanned successfully");
+    }
+  };
+
   useEffect(() => {
     if (transactionResult?.success && !transactionLoading) {
       console.log("Transaction created successfully, redirecting..."); // Debugging
@@ -84,6 +99,7 @@ const AddTransactionForm = ({ accounts, categories }) => {
         className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-lg space-y-6"
         onSubmit={handleSubmit(onSubmit)}
       >
+      <ReceiptScanner onScanComplete={handleScanComplete}/>
         {/* Transaction Type */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Type</label>
