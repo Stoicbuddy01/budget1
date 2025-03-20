@@ -1,6 +1,6 @@
 "use client";
 
-import { createTransaction } from "@/actions/transaction";
+import { createTransaction, updateTransaction } from "@/actions/transaction";
 import { transactionSchema } from "@/app/lib/schema";
 import CreateAccountDrawer from "@/components/create-account-drawer";
 import { Calendar } from "@/components/ui/calendar";
@@ -11,17 +11,25 @@ import { Switch } from "@/components/ui/switch";
 import useFetch from "@/hooks/use-fetch";
 import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button } from "@/components/ui/button"; // Ensure this import is correct
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { CalendarIcon, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { ReceiptScanner } from "./recipt-scanner";
 
-const AddTransactionForm = ({ accounts, categories }) => {
+const AddTransactionForm = ({ 
+  accounts,
+  categories,
+  editMode = false,
+  initialData = null,
+}) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+
   const {
     register,
     setValue,
@@ -32,21 +40,35 @@ const AddTransactionForm = ({ accounts, categories }) => {
     reset,
   } = useForm({
     resolver: zodResolver(transactionSchema),
-    defaultValues: {
-      type: "EXPENSE",
-      amount: "",
-      description: "",
-      accountId: accounts.find((ac) => ac.isDefault)?.id,
-      date: new Date(),
-      isRecurring: false,
-    },
+    defaultValues:
+      editMode && initialData
+        ? {
+            type: initialData.type,
+            amount: initialData.amount.toString(),
+            description: initialData.description,
+            accountId: initialData.accountId,
+            category: initialData.category,
+            date: new Date(initialData.date),
+            isRecurring: initialData.isRecurring,
+            ...(initialData.recurringInterval && {
+              recurringInterval: initialData.recurringInterval,
+            }),
+          }
+        : {
+            type: "EXPENSE",
+            amount: "",
+            description: "",
+            accountId: accounts.find((ac) => ac.isDefault)?.id,
+            date: new Date(),
+            isRecurring: false,
+          },
   });
 
   const {
     loading: transactionLoading,
     fn: transactionFn,
     data: transactionResult,
-  } = useFetch(createTransaction);
+  } = useFetch(editMode ? updateTransaction : createTransaction);
 
   const type = watch("type");
   const isRecurring = watch("isRecurring");
@@ -60,7 +82,13 @@ const AddTransactionForm = ({ accounts, categories }) => {
     };
 
     console.log("Calling transactionFn with:", formData); // Debugging
-    transactionFn(formData);
+
+    if (editMode) {
+      // Pass the editId to updateTransaction
+      transactionFn(editId, formData);
+    } else {
+      transactionFn(formData);
+    }
   };
 
   const handleScanComplete = (scannedData) => {
@@ -79,15 +107,15 @@ const AddTransactionForm = ({ accounts, categories }) => {
 
   useEffect(() => {
     if (transactionResult?.success && !transactionLoading) {
-      console.log("Transaction created successfully, redirecting..."); // Debugging
-      toast.success("Transaction created successfully");
+      console.log("Transaction created/updated successfully, redirecting..."); // Debugging
+      toast.success(`Transaction ${editMode ? "updated" : "created"} successfully`);
       reset();
       router.push(`/account/${transactionResult.data.accountId}`);
     } else if (transactionResult && !transactionResult.success) {
-      console.error("Transaction creation failed:", transactionResult); // Debugging
-      toast.error("Failed to create transaction");
+      console.error("Transaction creation/update failed:", transactionResult); // Debugging
+      toast.error(`Failed to ${editMode ? "update" : "create"} transaction`);
     }
-  }, [transactionResult, transactionLoading, reset, router]);
+  }, [transactionResult, transactionLoading, reset, router, editMode]);
 
   const filteredCategories = categories.filter(
     (category) => category.type === type
@@ -99,7 +127,8 @@ const AddTransactionForm = ({ accounts, categories }) => {
         className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-lg space-y-6"
         onSubmit={handleSubmit(onSubmit)}
       >
-      <ReceiptScanner onScanComplete={handleScanComplete}/>
+        {!editMode && <ReceiptScanner onScanComplete={handleScanComplete} />}
+        
         {/* Transaction Type */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Type</label>
@@ -272,11 +301,11 @@ const AddTransactionForm = ({ accounts, categories }) => {
         )}
 
         {/* Buttons */}
-        <div className="flex gap-4 justify-end">
+        <div className="flex gap-10 justify-center">
           <Button
             type="button"
             variant="outline"
-            className="w-24 h-8 text-sm" // Smaller button
+            className="w-60 h-8 text-sm" // Smaller button
             onClick={() => router.back()}
           >
             Cancel
@@ -284,13 +313,18 @@ const AddTransactionForm = ({ accounts, categories }) => {
 
           <Button
             type="submit"
-            className="w-24 h-8 text-sm" // Smaller button
+            className="w-60 h-8 text-sm" // Smaller button
             disabled={transactionLoading}
           >
             {transactionLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {editMode ? "Updating..." : "Creating..."}
+              </>
+            ) : editMode ? (
+              "Update Transaction"
             ) : (
-              "Create"
+              "Create Transaction"
             )}
           </Button>
         </div>
